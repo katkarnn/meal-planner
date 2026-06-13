@@ -1,0 +1,11 @@
+{
+  "user_id": "user-amelia",
+  "days": 3,
+  "allergens": ["peanut", "tree nut", "shellfish", "gluten"],
+  "diet_type": "vegetarian",
+  "goal": "maintain",
+  "daily_calorie_target": 2100,
+  "budget_cents": 3500,
+  "pantry": ["oats", "banana", "quinoa", "chickpeas", "olive oil", "rice"],
+  "household_size": 1
+}

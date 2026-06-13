@@ -1,0 +1,14 @@
+{
+  "user_id": "user-amelia",
+  "days": 3,
+  "allergens": ["peanut", "shellfish"],
+  "diet_type": "pescatarian",
+  "goal": "maintain",
+  "daily_calorie_target": 2000,
+  "budget_cents": 3000,
+  "pantry": [
+    "oats", "banana", "quinoa", "chickpeas", "olive oil",
+    "pasta", "tomato sauce", "sunflower seed butter"
+  ],
+  "household_size": 1
+}
