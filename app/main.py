@@ -7,6 +7,7 @@ the structured RunReport. The harness — not this layer — owns all safety.
 """
 from __future__ import annotations
 
+import importlib.util
 import os
 from pathlib import Path
 
@@ -28,12 +29,22 @@ app = FastAPI(title="Meal-Planner Safety Harness", version="1.0.0")
 
 
 # ---------------------------------------------------------------- workers ----
-def _has_claude_key() -> bool:
-    return bool(os.environ.get("ANTHROPIC_API_KEY"))
+def _module_installed(name: str) -> bool:
+    """A worker we advertise as available must be RUNNABLE — i.e. its SDK is
+    actually importable, not merely key-configured. Guards against a server
+    that has the API key set but the SDK missing from its environment."""
+    try:
+        return importlib.util.find_spec(name) is not None
+    except (ImportError, ValueError):
+        return False
 
 
-def _has_gemini_key() -> bool:
-    return bool(os.environ.get("GOOGLE_API_KEY"))
+def _claude_available() -> bool:
+    return bool(os.environ.get("ANTHROPIC_API_KEY")) and _module_installed("anthropic")
+
+
+def _gemini_available() -> bool:
+    return bool(os.environ.get("GOOGLE_API_KEY")) and _module_installed("google.genai")
 
 
 def build_worker(name: str):
@@ -43,19 +54,31 @@ def build_worker(name: str):
     if name == "template":
         return TemplateMealWorker()
     if name == "claude":
-        if not _has_claude_key():
+        if not os.environ.get("ANTHROPIC_API_KEY"):
             raise HTTPException(
                 status_code=400,
                 detail="The live Claude worker needs ANTHROPIC_API_KEY set on the server. "
                        "Set it in Railway > Variables, or pick the mock/template worker.",
             )
+        if not _module_installed("anthropic"):
+            raise HTTPException(
+                status_code=400,
+                detail="The Claude SDK isn't installed on the server (pip install anthropic). "
+                       "Pick the mock/template worker, or redeploy so requirements.txt installs.",
+            )
         return ClaudeMealWorker(model=os.environ.get("HARNESS_CLAUDE_MODEL", "claude-sonnet-4-6"))
     if name == "gemini":
-        if not _has_gemini_key():
+        if not os.environ.get("GOOGLE_API_KEY"):
             raise HTTPException(
                 status_code=400,
                 detail="The live Gemini worker needs GOOGLE_API_KEY set on the server. "
                        "Get a free key at aistudio.google.com, or pick the mock/template worker.",
+            )
+        if not _module_installed("google.genai"):
+            raise HTTPException(
+                status_code=400,
+                detail="The Gemini SDK isn't installed on the server (pip install google-genai). "
+                       "Pick the mock/template worker, or redeploy so requirements.txt installs.",
             )
         return GeminiMealWorker(model=os.environ.get("HARNESS_GEMINI_MODEL", "gemini-2.5-flash"))
     raise HTTPException(status_code=400,
@@ -126,8 +149,8 @@ def meta():
             {"id": "mock", "label": "Mock worker (deterministic — shows self-correction)",
              "available": True},
             {"id": "template", "label": "Template worker (alternate planner)", "available": True},
-            {"id": "claude", "label": "Claude (live AI agent)", "available": _has_claude_key()},
-            {"id": "gemini", "label": "Gemini (live AI agent — free tier)", "available": _has_gemini_key()},
+            {"id": "claude", "label": "Claude (live AI agent)", "available": _claude_available()},
+            {"id": "gemini", "label": "Gemini (live AI agent — free tier)", "available": _gemini_available()},
         ],
         "guardrails": [
             {"id": g.id, "rule": g.rule, "severity": g.severity.value} for g in G.REGISTRY
