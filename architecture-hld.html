@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Meal-Planner Safety Harness — HLD</title>
+<style>
+  :root{
+    --ink:#1a202c; --muted:#5a6577; --line:#e2e8f0; --bg:#ffffff;
+    --agent:#1976d2; --agentbg:#e3f2fd;
+    --rail:#f57c00; --railbg:#fff3e0;
+    --alarm:#c62828; --alarmbg:#ffebee;
+    --ship:#388e3c; --shipbg:#e8f5e9;
+    --human:#c2185b; --humanbg:#fce4ec;
+    --orch:#7b1fa2; --orchbg:#f3e5f5;
+    --slate:#334155; --slatebg:#f1f5f9;
+  }
+  *{box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; margin:0; padding:0;}
+  html,body{background:#fff; color:var(--ink);
+    font-family:"Segoe UI",-apple-system,Roboto,Helvetica,Arial,sans-serif; font-size:11.5px; line-height:1.5;}
+  @page{ size:A4; margin:0; }
+
+  /* one .page div == exactly one A4 sheet (794x1123px @96dpi) */
+  .page{
+    width:794px; height:1123px; padding:42px 46px 30px;
+    page-break-after:always; overflow:hidden; position:relative;
+    display:flex; flex-direction:column;
+  }
+  .page:last-child{ page-break-after:auto; }
+  /* direct children never stretch vertically; only spacers absorb slack.
+     .page>.card has specificity 0,2,0 so it beats the later .card{flex:1} */
+  .page > *{ flex:0 0 auto; }
+  .page > .card, .page > .row, .page > .frame, .page > table, .page > .seq{ flex:0 0 auto; }
+  .page > .vsp{ flex:1 1 0; min-height:8px; }
+
+  h1{font-size:26px; letter-spacing:-.5px; line-height:1.1;}
+  h2{font-size:15.5px; margin:0 0 8px; padding-bottom:5px; border-bottom:2px solid var(--line); color:var(--orch);}
+  .secgap{margin-top:16px;}
+  h3{font-size:12px; margin:9px 0 4px;}
+  p{margin:5px 0;}
+  .sub{color:var(--muted); font-size:12.5px; margin:3px 0 0;}
+  .lead{background:var(--slatebg); border-left:4px solid var(--orch); padding:9px 13px; border-radius:5px; margin:12px 0 0; font-size:11.5px;}
+  table{width:100%; border-collapse:collapse; margin:6px 0; font-size:10px;}
+  th,td{border:1px solid var(--line); padding:5px 7px; text-align:left; vertical-align:top;}
+  th{background:var(--slatebg); font-weight:600;}
+  code{background:#f4f4f8; padding:1px 4px; border-radius:3px; font-family:"Cascadia Code",Consolas,monospace; font-size:9.3px;}
+  .small{font-size:9.3px; color:var(--muted);}
+
+  .row{display:flex; gap:8px; align-items:stretch;}
+  .card{border:1.5px solid var(--line); border-radius:7px; padding:8px 10px; background:#fff; flex:1; min-width:0;}
+  .card .t{font-weight:700; font-size:11px;}
+  .card .d{font-size:9.3px; color:var(--muted); margin-top:2px;}
+  .card.agent{border-color:var(--agent); background:var(--agentbg);}
+  .card.rail{border-color:var(--rail); background:var(--railbg);}
+  .card.alarm{border-color:var(--alarm); background:var(--alarmbg);}
+  .card.ship{border-color:var(--ship); background:var(--shipbg);}
+  .card.human{border-color:var(--human); background:var(--humanbg);}
+  .card.orch{border-color:var(--orch); background:var(--orchbg);}
+  .card.slate{border-color:var(--slate); background:var(--slatebg);}
+  .arrow{display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:19px; font-weight:700; flex:0 0 auto;}
+  .varrow{text-align:center; color:var(--muted); font-size:17px; line-height:1; margin:5px 0;}
+  .varrow small{display:block; font-size:8.5px; color:var(--muted); margin-top:1px;}
+
+  .frame{border:2px dashed var(--orch); border-radius:9px; padding:10px; background:#faf7fc;}
+  .frame .label{font-size:9px; font-weight:700; letter-spacing:.6px; color:var(--orch); text-transform:uppercase; margin-bottom:7px;}
+
+  .badge{display:inline-block; font-size:8px; font-weight:700; padding:1px 6px; border-radius:10px; letter-spacing:.4px;}
+  .b-crit{background:var(--alarmbg); color:var(--alarm);}
+  .b-warn{background:var(--railbg); color:var(--rail);}
+  .b-must{background:#1565c0; color:#fff;}
+  .b-should{background:#00838f; color:#fff;}
+  .b-bonus{background:#6a1b9a; color:#fff;}
+  .b-done{background:var(--shipbg); color:var(--ship); border:1px solid var(--ship);}
+
+  .seq{border:1.5px solid var(--line); border-radius:7px; overflow:hidden;}
+  .seq .step{display:flex; gap:9px; padding:7px 10px; border-bottom:1px solid var(--line); align-items:baseline;}
+  .seq .step:last-child{border-bottom:none;}
+  .seq .n{flex:0 0 70px; font-weight:700; font-size:9px; color:var(--orch);}
+  .seq .msg{flex:1; font-size:10px;}
+  .seq .res{flex:0 0 168px; font-size:9.3px;}
+  .ok{color:var(--ship); font-weight:700;}
+  .no{color:var(--alarm); font-weight:700;}
+  .hl{background:#fffbe6;}
+
+  .two{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  ul{margin:4px 0; padding-left:15px;}
+  li{margin:3px 0;}
+  .pagefoot{text-align:center; font-size:9px; color:var(--muted); border-top:1px solid var(--line); padding-top:6px;}
+  .pitch{background:#1a202c; color:#fff; border-radius:8px; padding:12px 15px; margin-top:10px;}
+  .pitch b{color:#ffd54f;}
+  .pn{position:absolute; right:46px; bottom:16px; font-size:8.5px; color:#b0b8c4;}
+</style>
+</head>
+<body>
+
+<!-- ============ PAGE 1 — Problem & Approach ============ -->
+<div class="page">
+  <h1>Meal-Planner Safety Harness</h1>
+  <p class="sub">High-Level Design &nbsp;·&nbsp; An AI agent that <i>lives inside</i> a safety harness</p>
+  <div class="lead">
+    The agent only <b>proposes</b> a meal plan. The harness alone decides what reaches the user.
+    <b>All safety lives in the gap between <i>propose</i> and <i>apply</i></b> — never inside the model.
+  </div>
+
+  <div class="vsp"></div>
+  <h2>1 · The real-world problem</h2>
+  <p>People let AI plan what they eat — but a meal plan is <b>acted on</b>, not a throwaway chat reply.
+     A <i>fluent</i> AI is not a <i>safe</i> AI: the same model that writes a great plan will, just as confidently, write a dangerous one.</p>
+  <table>
+    <tr><th style="width:48%">A confident AI can output…</th><th>…and a real person is harmed</th></tr>
+    <tr><td>Peanut butter for a peanut-allergic user</td><td>Anaphylaxis</td></tr>
+    <tr><td>A 700 kcal/day “weight-loss” plan</td><td>Starvation-level diet, medically unsafe</td></tr>
+    <tr><td>An ingredient nobody confirmed you own</td><td>A plan you literally cannot cook</td></tr>
+  </table>
+  <p><b>You cannot trust the model to police itself.</b> The component generating the plan must not be the final word on whether it is safe to serve.</p>
+
+  <div class="vsp"></div>
+  <h2>2 · How we address it — <i>propose vs. apply</i></h2>
+  <p>We don’t build a “safer model.” We wrap <b>any</b> model in a harness that owns every safety decision. The agent is
+     <b>powerful but untrusted</b>: it makes proposals; nothing it says is authoritative until the harness clears it.</p>
+
+  <div class="frame" style="margin-top:6px;">
+    <div class="label">The Harness — owns all safety</div>
+    <div class="row">
+      <div class="card slate" style="flex:0 0 118px;"><div class="t">User request</div><div class="d">days · diet · allergens · budget · pantry</div></div>
+      <div class="arrow">→</div>
+      <div class="card agent"><div class="t">🤖 AI Agent</div><div class="d">proposes only<br>Claude / Gemini / Mock</div></div>
+      <div class="arrow">→</div>
+      <div class="card rail"><div class="t">🚦 Gates</div><div class="d">declared rules<br>+ ordered checks</div></div>
+      <div class="arrow">→</div>
+      <div style="flex:1; display:flex; flex-direction:column; gap:6px;">
+        <div class="card ship" style="flex:0; padding:6px 10px;"><div class="t">✅ SHIP</div></div>
+        <div class="card alarm" style="flex:0; padding:6px 10px;"><div class="t">↩ feedback → re-propose</div></div>
+        <div class="card human" style="flex:0; padding:6px 10px;"><div class="t">🙋 STOP → ask a human</div></div>
+      </div>
+    </div>
+  </div>
+  <p class="small" style="margin-top:8px;">The agent is fully <b>swappable</b> because it speaks one contract: <code>propose(request, feedback) → plan</code>.
+     Swap Claude for Gemini for a mock — the safety guarantees don’t move, because they were never in the model.</p>
+
+  <div class="vsp"></div>
+  <div class="pagefoot">Meal-Planner Safety Harness · High-Level Design &nbsp;·&nbsp; github.com/katkarnn/meal-planner</div>
+  <div class="pn">1 / 5</div>
+</div>
+
+<!-- ============ PAGE 2 — System architecture ============ -->
+<div class="page">
+  <h2>3 · System architecture</h2>
+  <p style="margin-bottom:10px;">A thin web shell on top of the orchestrator, which sequences four independent pillars. <b>The orchestrator reimplements none of them — it only sequences.</b></p>
+
+  <div class="row" style="margin-bottom:2px;">
+    <div class="card"><div class="t">🖥️ Web UI &nbsp;<span class="small">web/index.html</span></div><div class="d">Single page: request form · live gate view · ship/block verdict · alarm stream · replay</div></div>
+  </div>
+  <div class="varrow">▼</div>
+  <div class="row" style="margin-bottom:2px;">
+    <div class="card"><div class="t">🔌 API shell &nbsp;<span class="small">app/main.py · FastAPI</span></div><div class="d">Validates input, picks a worker, calls the harness, returns the structured RunReport<br><code>/api/plan</code> &nbsp; <code>/api/meta</code> &nbsp; <code>/api/replay</code> &nbsp; <code>/healthz</code></div></div>
+  </div>
+  <div class="varrow">▼</div>
+  <div class="card orch" style="margin-bottom:2px;"><div class="t">🧭 Orchestrator &nbsp;<span class="small">harness.py</span></div><div class="d">The attempt loop + decision logic — ship / retry / escalate.</div></div>
+  <div class="varrow">▼</div>
+
+  <div class="frame">
+    <div class="label">The four pillars — safety lives here, not in the model</div>
+    <div class="row" style="gap:9px;">
+      <div class="card slate"><div class="t">📦 Material</div><div class="d">material.py<br>typed, immutable request/plan + Workspace persistence</div></div>
+      <div class="card agent"><div class="t">🤖 Worker</div><div class="d">agent.py<br>Claude · Gemini · Mock · Template</div></div>
+      <div class="card rail"><div class="t">🛡️ Guardrails</div><div class="d">guardrails.py<br>declared REGISTRY of rules</div></div>
+      <div class="card rail"><div class="t">✅ Checkpoints</div><div class="d">checkpoints.py<br>ordered pass/fail gates</div></div>
+      <div class="card alarm"><div class="t">🚨 Alarms</div><div class="d">alarms.py<br>structured, severity-typed</div></div>
+    </div>
+  </div>
+  <div class="varrow">▼<small>every checkpoint result persisted</small></div>
+  <div class="card slate" style="flex:0;"><div class="t">💾 runs/ — per-run snapshots on disk</div><div class="d">enables replay-from-checkpoint — every safety decision is auditable &amp; reproducible</div></div>
+
+  <div class="vsp"></div>
+  <h3>Data that flows through the harness</h3>
+  <table>
+    <tr><th style="width:130px">Object</th><th>What it carries</th></tr>
+    <tr><td><code>PlanRequest</code> <span class="small">(in)</span></td><td>Normalized, immutable user need — the only thing a worker is handed.</td></tr>
+    <tr><td><code>MealPlan</code> <span class="small">(out)</span></td><td>The worker’s <i>proposal</i> — never authoritative until gated.</td></tr>
+    <tr><td><code>CheckpointResult</code></td><td>PASS/FAIL + criteria + evidence, snapshotted per stage.</td></tr>
+    <tr><td><code>Alarm</code></td><td>type · severity · context · recommended action · source.</td></tr>
+    <tr><td><code>RunReport</code></td><td>Final verdict + every checkpoint + every alarm + the plan (if shipped).</td></tr>
+  </table>
+
+  <div class="vsp"></div>
+  <div class="pagefoot">Meal-Planner Safety Harness · High-Level Design</div>
+  <div class="pn">2 / 5</div>
+</div>
+
+<!-- ============ PAGE 3 — The four pillars in depth ============ -->
+<div class="page">
+  <h2>4 · The four pillars in one glance</h2>
+  <table>
+    <tr><th style="width:120px">Pillar</th><th style="width:150px">Role</th><th>Key property</th></tr>
+    <tr><td><b>🛡️ Guardrails</b><br><span class="small">guardrails.py</span></td><td><i>Declare</i> what “safe” means</td><td>Every rule is a data object in one <code>REGISTRY</code> list — <b>no safety logic hidden in the model or orchestrator</b>. Tuning safety = editing the list.</td></tr>
+    <tr><td><b>✅ Checkpoints</b><br><span class="small">checkpoints.py</span></td><td><i>Gate</i> the proposal, in order</td><td>Explicit PASS/FAIL + the evidence judged on. <b>SAFETY runs before anything can ship</b>; a CRITICAL failure stops the line.</td></tr>
+    <tr><td><b>📦 Material</b><br><span class="small">material.py</span></td><td>Move request <i>in</i> / proposal <i>out</i></td><td>Typed &amp; immutable. The agent never touches disk or raw input — that decoupling is exactly what makes it swappable.</td></tr>
+    <tr><td><b>🚨 Alarms</b><br><span class="small">alarms.py</span></td><td><i>Signal</i> what went wrong</td><td>Structured objects (<b>type · severity · context · recommended action</b>), streamed as JSONL — not log lines. CRITICAL alarms are blocking.</td></tr>
+  </table>
+
+  <div class="vsp"></div>
+  <h3>The declared guardrail registry <span class="small">— the entire safety surface, in one editable list</span></h3>
+  <table>
+    <tr><th style="width:180px">Guardrail</th><th style="width:74px">Severity</th><th>Rule</th></tr>
+    <tr><td><code>ALLERGEN_EXCLUSION</code></td><td><span class="badge b-crit">CRITICAL</span></td><td>No ingredient matching a user allergen (alias-expanded: “peanut” → groundnut, arachis…) may appear.</td></tr>
+    <tr><td><code>CALORIE_FLOOR</code></td><td><span class="badge b-crit">CRITICAL</span></td><td>No day, and no stated target, may fall below the 1200 kcal safety floor.</td></tr>
+    <tr><td><code>CALORIE_CEILING</code></td><td><span class="badge b-warn">WARNING</span></td><td>No day may exceed the 5000 kcal sanity ceiling.</td></tr>
+    <tr><td><code>INGREDIENT_CONFIRMED</code></td><td><span class="badge b-warn">WARNING</span></td><td>Every ingredient is pantry-stocked or explicitly flagged <code>buy:</code>.</td></tr>
+    <tr><td><code>DIET_COMPLIANCE</code></td><td><span class="badge b-warn">WARNING</span></td><td>All meals respect the declared diet type (vegan, pescatarian…).</td></tr>
+    <tr><td><code>BUDGET_LIMIT</code></td><td><span class="badge b-warn">WARNING</span></td><td>Total plan cost stays within the weekly budget.</td></tr>
+  </table>
+  <p class="small">A failed guardrail returns structured <code>violations</code>, a worker-readable <code>feedback</code> string, and an <code>auto_recoverable</code> flag — the line between “retry the worker” and “stop and ask a human.”</p>
+
+  <div class="vsp"></div>
+  <h3>The ordered checkpoint pipeline <span class="small">— order is itself a safety property</span></h3>
+  <div class="row" style="align-items:stretch;">
+    <div class="card rail"><div class="t">CP1 · Schema</div><div class="d">structurally complete?</div></div>
+    <div class="arrow">→</div>
+    <div class="card alarm"><div class="t">CP2 · Safety</div><div class="d">allergens? calorie floor?</div></div>
+    <div class="arrow">→</div>
+    <div class="card rail"><div class="t">CP3 · Fit</div><div class="d">diet + budget?</div></div>
+    <div class="arrow">→</div>
+    <div class="card rail"><div class="t">CP4 · Completeness</div><div class="d">all ingredients confirmed?</div></div>
+  </div>
+  <p class="small">CP2 SAFETY runs before any stage that could ship a plan; a CRITICAL failure there <b>stops the line</b> so no downstream gate ever evaluates an unsafe plan.</p>
+
+  <div class="vsp"></div>
+  <div class="pagefoot">Meal-Planner Safety Harness · High-Level Design</div>
+  <div class="pn">3 / 5</div>
+</div>
+
+<!-- ============ PAGE 4 — Agent loop & outcome ============ -->
+<div class="page">
+  <h2>5 · How the agent works &amp; communicates</h2>
+  <p>The agent never gets the last word, and never works blind. Each failed gate hands back a <b>structured, worker-readable feedback string</b>.
+     Feedback is <b>cumulative</b> — the harness remembers every correction, so the agent <i>converges</i> instead of trading one defect for another.</p>
+  <div class="seq" style="margin-top:6px;">
+    <div class="step"><div class="n">Attempt 1</div><div class="msg">Harness → Agent: <code>propose(request, feedback="")</code><br>Agent → Harness: plan with <b>peanut butter</b> + an unflagged ingredient</div><div class="res"><span class="no">CP2 SAFETY — allergen → line STOPS</span><br><span class="small">later gates never run on an unsafe plan</span></div></div>
+    <div class="step hl"><div class="n">Attempt 2</div><div class="msg">Harness → Agent: <code>propose(request, "remove peanut…")</code><br>Agent → Harness: peanut fixed, ingredient still unflagged</div><div class="res"><span class="no">CP4 — unconfirmed ingredient</span></div></div>
+    <div class="step"><div class="n">Attempt 3</div><div class="msg">Harness → Agent: <code>propose(request, "remove peanut… + flag buy:")</code><br>Agent → Harness: both defects fixed</div><div class="res"><span class="ok">ALL GATES PASS ✓ → SHIP</span></div></div>
+    <div class="step"><div class="n">Non-recoverable</div><div class="msg">e.g. a user’s <b>stated</b> 700 kcal target — Harness → Human: <i>EscalationPacket</i> “approve override or reject?”</div><div class="res"><span class="no">Human rejects → BLOCK</span><br><span class="small">never auto-guesses a number</span></div></div>
+  </div>
+  <p class="small" style="margin-top:6px;"><b>Core guarantee:</b> the agent’s behavior changes in response to the harness — not the other way around.</p>
+
+  <div class="vsp"></div>
+  <h2>6 · How the final outcome is produced</h2>
+  <p>Every run ends in exactly one verdict. Safety gates <b>stop the line</b>: a CRITICAL failure means no later gate runs, so an unsafe plan can never be “saved” by a downstream check.</p>
+  <div class="row" style="align-items:center; margin-top:6px;">
+    <div class="card rail" style="flex:0 0 88px;"><div class="t">CP1→CP4</div><div class="d">all gates pass</div></div>
+    <div class="arrow">→</div>
+    <div class="card ship" style="flex:0 0 92px;"><div class="t">✅ SHIP</div></div>
+    <div class="arrow" style="flex:0 0 30px;">|</div>
+    <div class="card slate"><div class="t">↩ any gate fails</div><div class="d">accumulate feedback → re-propose while attempts remain</div></div>
+    <div class="arrow">→</div>
+    <div class="card human"><div class="t">🙋 non-recoverable / budget out</div><div class="d">escalate to the human gate</div></div>
+  </div>
+  <table style="margin-top:8px;">
+    <tr><th style="width:210px">Outcome</th><th>Meaning</th></tr>
+    <tr><td><span class="badge b-done">SHIPPED</span></td><td>Cleared every gate (often after self-correction).</td></tr>
+    <tr><td><span class="badge b-warn">BLOCKED · pending human</span></td><td>Non-recoverable safety issue, no human wired in → <b>safe default: halt</b>.</td></tr>
+    <tr><td><span class="badge b-crit">BLOCKED · rejected</span></td><td>A human reviewed and declined the override.</td></tr>
+    <tr><td><span class="badge b-crit">BLOCKED · loop exhausted</span></td><td>Agent couldn’t satisfy constraints in budget → escalates; <b>never ships a guess</b>.</td></tr>
+  </table>
+  <p class="small">Every checkpoint result is <b>persisted to disk</b>, so any run can be <b>replayed from any checkpoint forward without re-invoking the agent</b>.</p>
+
+  <div class="vsp"></div>
+  <div class="pagefoot">Meal-Planner Safety Harness · High-Level Design</div>
+  <div class="pn">4 / 5</div>
+</div>
+
+<!-- ============ PAGE 5 — Tech & requirements ============ -->
+<div class="page">
+  <h2>7 · Technology — how it’s built</h2>
+  <div class="two">
+    <table style="margin:0;">
+      <tr><th style="width:88px">Layer</th><th>Stack</th></tr>
+      <tr><td>Frontend</td><td>Single static HTML page + vanilla JS (zero build)</td></tr>
+      <tr><td>Backend</td><td>Python 3.12 · FastAPI · Uvicorn · Pydantic</td></tr>
+      <tr><td>Safety core</td><td><b>Pure Python, zero third-party deps</b> — runs &amp; is testable with no API key</td></tr>
+      <tr><td>Live agents</td><td>Claude <code>sonnet-4-6</code> · Gemini <code>2.5-flash</code> (lazy-imported)</td></tr>
+      <tr><td>Offline agents</td><td>Mock + Template — deterministic, demo without keys</td></tr>
+      <tr><td>Deploy</td><td>GitHub → Railway (Nixpacks · Procfile · env-var keys)</td></tr>
+    </table>
+    <div>
+      <h3 style="margin-top:0;">Why this shape</h3>
+      <ul>
+        <li>SDKs are imported <b>lazily</b> → the whole safety engine runs offline; judges see it work with no key.</li>
+        <li>Workers are <b>drop-in</b>: the same harness drives Claude, Gemini, or a mock with <b>zero harness changes</b>.</li>
+        <li>API keys live only in the server environment — never in code or git.</li>
+        <li>The web layer is a <b>thin shell</b>: validate → pick worker → <code>Harness.run</code> → report. <b>All safety stays in the harness.</b></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="vsp"></div>
+  <h2>8 · Hackathon requirements — and how this project meets each</h2>
+  <table>
+    <tr><th style="width:56px">Class</th><th style="width:31%">Requirement</th><th>How we met it</th><th style="width:118px">Where</th></tr>
+    <tr><td><span class="badge b-must">MUST</span></td><td>Four pillars implemented &amp; <b>separate</b> from the worker</td><td>Each pillar a distinct module; worker isolated behind a protocol; orchestrator only sequences. <span class="ok">✓</span></td><td><span class="small">guardrails · checkpoints · material · alarms · agent</span></td></tr>
+    <tr><td><span class="badge b-must">MUST</span></td><td>Agent behavior <b>changes meaningfully</b> on feedback</td><td>Cumulative feedback loop: agent fixes allergen, then unflagged item, converging over 3 attempts. <span class="ok">✓</span></td><td><span class="small">harness.py loop · §5</span></td></tr>
+    <tr><td><span class="badge b-must">MUST</span></td><td>Guardrails <b>declared</b>; checkpoints <b>explicit pass/fail</b></td><td>Declared <code>REGISTRY</code>; ordered <code>PIPELINE</code>, each stating criteria + PASS/FAIL + evidence. <span class="ok">✓</span></td><td><span class="small">REGISTRY · PIPELINE</span></td></tr>
+    <tr><td><span class="badge b-must">MUST</span></td><td>Alarms produce <b>structured output</b></td><td>Every alarm: type · severity · context · recommended action · source; 9 named types; JSONL stream. <span class="ok">✓</span></td><td><span class="small">alarms.Alarm · AlarmType</span></td></tr>
+    <tr><td><span class="badge b-must">MUST</span></td><td>Runs on a <b>real input</b> at demo time</td><td>Live web app on Railway + real request fixtures (pescatarian, peanut/shellfish allergy). <span class="ok">✓</span></td><td><span class="small">inputs/*.json · live URL</span></td></tr>
+    <tr><td><span class="badge b-must">MUST</span></td><td>A <b>HARNESS.md</b> on architecture &amp; design</td><td>Full HARNESS.md + this HLD as the higher-altitude companion. <span class="ok">✓</span></td><td><span class="small">HARNESS.md · ARCHITECTURE.md</span></td></tr>
+    <tr><td><span class="badge b-should">SHOULD</span></td><td><b>Swappable</b> agent — no harness changes</td><td>The <code>Worker</code> protocol (<code>propose</code>) is the only contract; 4 workers drop in unchanged. <span class="ok">✓</span></td><td><span class="small">agent.Worker</span></td></tr>
+    <tr><td><span class="badge b-should">SHOULD</span></td><td>Checkpoints <b>persisted</b>; replay forward</td><td><code>Workspace</code> snapshots each stage; <code>replay_from()</code> re-runs the rest without calling the worker. <span class="ok">✓</span></td><td><span class="small">Workspace · replay_from</span></td></tr>
+    <tr><td><span class="badge b-should">SHOULD</span></td><td><b>Human-in-the-loop</b> escalation</td><td>Non-recoverable failures build an <code>EscalationPacket</code> → <code>human_gate</code>; default = halt. <span class="ok">✓</span></td><td><span class="small">EscalationPacket · human_gate</span></td></tr>
+    <tr><td><span class="badge b-bonus">BONUS</span></td><td><b>Second worker swapped</b> in at demo</td><td>Template &amp; Gemini workers swap into the same pipeline live in the UI. <span class="ok">✓</span></td><td><span class="small">Template/Gemini Worker</span></td></tr>
+  </table>
+  <p class="small">Coverage: all 6 <span class="badge b-must">MUST</span> · all 3 <span class="badge b-should">SHOULD</span> · the <span class="badge b-bonus">BONUS</span> — met and demonstrable in the live app.</p>
+
+  <div class="pitch">
+    <div style="font-size:13px; font-weight:700; margin-bottom:3px;">The one-line pitch</div>
+    <b>Don’t make the model safe — put the model in a harness that’s safe.</b>
+    The agent proposes; declared guardrails, ordered checkpoints, structured alarms, and a stop-and-ask-a-human gate decide. Swap the model freely; the guarantees never move.
+  </div>
+
+  <div class="vsp"></div>
+  <div class="pagefoot">Meal-Planner Safety Harness · High-Level Design &nbsp;·&nbsp; github.com/katkarnn/meal-planner</div>
+  <div class="pn">5 / 5</div>
+</div>
+
+</body>
+</html>
