@@ -206,8 +206,9 @@ async function init(){
   $("allergenBoxes").innerHTML=ALLERGEN_OPTS.map(([v,l])=>
     `<label><input type="checkbox" value="${v}"/> ${l}</label>`).join("");
 
-  // defaults: Gemini worker, omnivore, maintain, no allergens ticked
-  if([...$("worker").options].some(o=>o.value==="gemini" && !o.disabled)) $("worker").value="gemini";
+  // defaults: Mock worker (deterministic, no API/quota — always runnable),
+  // omnivore, maintain, no allergens ticked. Live workers stay selectable.
+  $("worker").value="mock";
   $("diet").value="omnivore";
   $("goal").value="maintain";
   setAllergens([]);
